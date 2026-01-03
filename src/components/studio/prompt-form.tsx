@@ -1,33 +1,165 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SettingsPanel } from "./settings-panel";
 
 interface PromptFormProps {
-  onGenerate: (prompt: string, count: number) => Promise<void>;
+  onGenerate: (prompt: string, count: number, image?: string) => Promise<void>;
   isLoading: boolean;
 }
 
 export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
   const [prompt, setPrompt] = useState("");
   const [imageCount, setImageCount] = useState(1);
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const maxChars = 1000;
+
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle file selection
+  const handleFileSelect = async (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    const base64 = await fileToBase64(file);
+    setReferenceImage(base64);
+  };
+
+  // Drag and drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) await handleFileSelect(file);
+  }, []);
+
+  // File input change handler
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await handleFileSelect(file);
+  };
+
+  // Remove reference image
+  const removeReferenceImage = () => {
+    setReferenceImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isLoading) return;
-    await onGenerate(prompt.trim(), imageCount);
+    await onGenerate(prompt.trim(), imageCount, referenceImage || undefined);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Reference Image Drop Zone */}
+      <div className="space-y-3">
+        <Label className="text-base font-medium">
+          Reference Image (optional)
+        </Label>
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => fileInputRef.current?.click()}
+          className={`relative border-2 border-dashed rounded-xl p-4 transition-all duration-300 cursor-pointer ${
+            isDragging
+              ? "border-primary bg-primary/10"
+              : referenceImage
+              ? "border-primary/50 bg-primary/5"
+              : "border-border/50 hover:border-primary/30 hover:bg-input/30"
+          }`}
+        >
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInputChange}
+            className="hidden"
+            disabled={isLoading}
+          />
+          
+          {referenceImage ? (
+            <div className="flex items-center gap-4">
+              <div className="relative w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  src={referenceImage}
+                  alt="Reference"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  Reference image loaded
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Image will be used for img2img generation
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeReferenceImage();
+                }}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                </svg>
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="17 8 12 3 7 8"/>
+                  <line x1="12" x2="12" y1="3" y2="15"/>
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-medium text-foreground">
+                  Drop image here or click to upload
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  PNG, JPG, WEBP up to 10MB
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Prompt Input */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label htmlFor="prompt" className="text-base font-medium">
-            Describe your image
+            {referenceImage ? "Describe the changes" : "Describe your image"}
           </Label>
           <span className="text-sm text-muted-foreground font-mono">
             {prompt.length}/{maxChars}
@@ -35,7 +167,10 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
         </div>
         <Textarea
           id="prompt"
-          placeholder="A majestic dragon soaring through aurora borealis, digital art, highly detailed, cinematic lighting..."
+          placeholder={referenceImage 
+            ? "Make it look cyberpunk, add neon lights, change the background to a futuristic city..."
+            : "A majestic dragon soaring through aurora borealis, digital art, highly detailed, cinematic lighting..."
+          }
           value={prompt}
           onChange={(e) => setPrompt(e.target.value.slice(0, maxChars))}
           className="min-h-[140px] resize-none bg-input/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 text-base placeholder:text-muted-foreground/50 transition-all duration-300"

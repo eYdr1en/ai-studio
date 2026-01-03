@@ -18,7 +18,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerationResult | null>(null);
 
-  const handleGenerate = async (prompt: string, count: number) => {
+  const handleGenerate = async (prompt: string, count: number, image?: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -28,7 +28,11 @@ export default function Home() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ prompt, count }),
+        body: JSON.stringify({ 
+          prompt, 
+          count,
+          image, // Reference image for img2img
+        }),
       });
 
       const data = await response.json();
