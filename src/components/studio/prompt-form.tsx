@@ -6,16 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SettingsPanel } from "./settings-panel";
 
-// Available AI models for image generation
+// Available AI models for image generation - Pollinations.ai = FREE!
 const AI_MODELS = [
-  { id: "flux-schnell", name: "FLUX Schnell", description: "Fast, high quality", badge: "⚡ Fast" },
-  { id: "flux-dev", name: "FLUX Dev", description: "Higher quality", badge: "✨ Quality" },
-  { id: "sdxl-turbo", name: "SDXL Turbo", description: "Fast with editing", badge: "🎨 Edit" },
-  { id: "instruct-pix2pix", name: "Pix2Pix", description: "Best for editing", badge: "🖌️ Edit" },
-  { id: "realvis-xl", name: "RealVis XL", description: "Photorealistic", badge: "📷 Photo" },
-  { id: "sdxl", name: "SDXL", description: "Versatile", badge: "" },
-  { id: "playground-v2", name: "Playground v2", description: "Artistic", badge: "🎭 Art" },
-  { id: "gpt-image-1.5", name: "GPT Image 1.5", description: "Best quality (needs API key)", badge: "🏆 Best" },
+  { id: "flux", name: "FLUX", description: "Fast high-quality (FREE)", badge: "⚡ FREE" },
+  { id: "flux-realism", name: "FLUX Realism", description: "Photorealistic (FREE)", badge: "📷 FREE" },
+  { id: "flux-anime", name: "FLUX Anime", description: "Anime style (FREE)", badge: "🎭 FREE" },
+  { id: "flux-3d", name: "FLUX 3D", description: "3D render style (FREE)", badge: "🎮 FREE" },
+  { id: "turbo", name: "Turbo", description: "Super fast (FREE)", badge: "🚀 FREE" },
+  { id: "gpt-image-1.5", name: "GPT Image 1.5", description: "Best + editing (needs API key)", badge: "🏆 Best" },
 ];
 
 interface PromptFormProps {
@@ -26,7 +24,7 @@ interface PromptFormProps {
 export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
   const [prompt, setPrompt] = useState("");
   const [imageCount, setImageCount] = useState(1);
-  const [selectedModel, setSelectedModel] = useState("flux-schnell");
+  const [selectedModel, setSelectedModel] = useState("flux");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
