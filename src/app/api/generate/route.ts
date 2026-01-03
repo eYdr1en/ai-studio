@@ -1,7 +1,7 @@
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { prompt, count = 1 } = body;
+    const { prompt, count = 1, image, strength = 0.75 } = body;
 
     if (!prompt || typeof prompt !== "string") {
       return Response.json({ error: "Prompt is required" }, { status: 400 });
@@ -14,25 +14,46 @@ export async function POST(req: Request) {
       return Response.json({ error: "HF_TOKEN not configured" }, { status: 500 });
     }
 
+    // Use different model based on whether reference image is provided
+    const isImg2Img = !!image;
+    const modelUrl = isImg2Img
+      ? "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-refiner-1.0"
+      : "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell";
+
     // Generate images in parallel
     const imagePromises = Array.from({ length: imageCount }, async () => {
-      const response = await fetch(
-        "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${HF_TOKEN}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            inputs: prompt,
-            parameters: {
-              num_inference_steps: 4,
-              guidance_scale: 0,
-            },
-          }),
+      // Prepare request body based on mode
+      let requestBody: Record<string, unknown>;
+      
+      if (isImg2Img) {
+        // Extract base64 data from data URL if needed
+        let imageBase64 = image;
+        if (image.startsWith("data:")) {
+          imageBase64 = image.split(",")[1];
         }
-      );
+        
+        requestBody = {
+          inputs: prompt,
+          parameters: {
+            image: imageBase64,
+            strength: strength, // 0.0 = keep original, 1.0 = completely change
+            guidance_scale: 7.5,
+          },
+        };
+      } else {
+        requestBody = {
+          inputs: prompt,
+        };
+      }
+
+      const response = await fetch(modelUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -52,6 +73,7 @@ export async function POST(req: Request) {
       images: imageUrls,
       prompt,
       count: imageCount,
+      mode: isImg2Img ? "img2img" : "txt2img",
     });
   } catch (error) {
     console.error("Image generation error:", error);
