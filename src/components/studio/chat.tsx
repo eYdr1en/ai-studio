@@ -1,14 +1,35 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useRef, useEffect } from "react";
+import { DefaultChatTransport } from "ai";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export function Chat() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: "/api/chat",
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: "/api/chat" }),
+    []
+  );
+
+  const { messages, status, error, sendMessage } = useChat({
+    transport,
   });
+
+  const [input, setInput] = useState("");
+  const isLoading = status === "streaming" || status === "submitted";
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+    const userMessage = input;
+    setInput("");
+    await sendMessage({ text: userMessage });
+  };
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -86,7 +107,11 @@ export function Chat() {
                 </div>
               )}
               <div className="text-sm whitespace-pre-wrap leading-relaxed prose prose-invert prose-sm max-w-none">
-                {message.content}
+                {message.parts
+                  .filter((part) => part.type === "text")
+                  .map((part, index) => (
+                    <span key={index}>{part.text}</span>
+                  ))}
               </div>
             </div>
           </div>
