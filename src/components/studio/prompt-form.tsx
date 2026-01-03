@@ -6,16 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SettingsPanel } from "./settings-panel";
 
+// Available AI models for image generation
+const AI_MODELS = [
+  { id: "flux-schnell", name: "FLUX Schnell", description: "Fast, high quality", badge: "⚡ Fast" },
+  { id: "flux-dev", name: "FLUX Dev", description: "Higher quality", badge: "✨ Quality" },
+  { id: "sdxl-turbo", name: "SDXL Turbo", description: "Fast with editing", badge: "🎨 Edit" },
+  { id: "instruct-pix2pix", name: "Pix2Pix", description: "Best for editing", badge: "🖌️ Edit" },
+  { id: "realvis-xl", name: "RealVis XL", description: "Photorealistic", badge: "📷 Photo" },
+  { id: "sdxl", name: "SDXL", description: "Versatile", badge: "" },
+  { id: "playground-v2", name: "Playground v2", description: "Artistic", badge: "🎭 Art" },
+  { id: "gpt-image-1.5", name: "GPT Image 1.5", description: "Best quality (needs API key)", badge: "🏆 Best" },
+];
+
 interface PromptFormProps {
-  onGenerate: (prompt: string, count: number, image?: string) => Promise<void>;
+  onGenerate: (prompt: string, count: number, image?: string, model?: string) => Promise<void>;
   isLoading: boolean;
 }
 
 export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
   const [prompt, setPrompt] = useState("");
   const [imageCount, setImageCount] = useState(1);
+  const [selectedModel, setSelectedModel] = useState("flux-schnell");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const maxChars = 1000;
 
@@ -69,11 +83,84 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isLoading) return;
-    await onGenerate(prompt.trim(), imageCount, referenceImage || undefined);
+    await onGenerate(prompt.trim(), imageCount, referenceImage || undefined, selectedModel);
   };
+
+  const currentModel = AI_MODELS.find(m => m.id === selectedModel) || AI_MODELS[0];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* AI Model Selector */}
+      <div className="space-y-3">
+        <Label className="text-base font-medium">AI Model</Label>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowModelDropdown(!showModelDropdown)}
+            disabled={isLoading}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-input/50 border border-border/50 hover:border-primary/30 transition-all duration-300 text-left disabled:opacity-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                  <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"/>
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-foreground">{currentModel.name}</span>
+                  {currentModel.badge && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      {currentModel.badge}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{currentModel.description}</p>
+              </div>
+            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted-foreground transition-transform ${showModelDropdown ? 'rotate-180' : ''}`}>
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+          
+          {/* Dropdown */}
+          {showModelDropdown && (
+            <div className="absolute z-50 w-full mt-2 py-2 rounded-xl bg-background/95 backdrop-blur-xl border border-border/50 shadow-xl max-h-[300px] overflow-y-auto">
+              {AI_MODELS.map((model) => (
+                <button
+                  key={model.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedModel(model.id);
+                    setShowModelDropdown(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-primary/5 transition-colors text-left ${
+                    selectedModel === model.id ? 'bg-primary/10' : ''
+                  }`}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground">{model.name}</span>
+                      {model.badge && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {model.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{model.description}</p>
+                  </div>
+                  {selectedModel === model.id && (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Reference Image Drop Zone */}
       <div className="space-y-3">
         <Label className="text-base font-medium">
