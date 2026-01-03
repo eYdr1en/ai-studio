@@ -7,19 +7,19 @@ import { Label } from "@/components/ui/label";
 import { SettingsPanel } from "./settings-panel";
 
 interface PromptFormProps {
-  onGenerate: (prompt: string, steps: number) => Promise<void>;
+  onGenerate: (prompt: string, count: number) => Promise<void>;
   isLoading: boolean;
 }
 
 export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
   const [prompt, setPrompt] = useState("");
-  const [steps, setSteps] = useState(5);
+  const [imageCount, setImageCount] = useState(1);
   const maxChars = 1000;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isLoading) return;
-    await onGenerate(prompt.trim(), steps);
+    await onGenerate(prompt.trim(), imageCount);
   };
 
   return (
@@ -43,7 +43,11 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
         />
       </div>
 
-      <SettingsPanel steps={steps} onStepsChange={setSteps} disabled={isLoading} />
+      <SettingsPanel 
+        imageCount={imageCount} 
+        onImageCountChange={setImageCount} 
+        disabled={isLoading} 
+      />
 
       <Button
         type="submit"
@@ -72,7 +76,7 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            Generating...
+            Generating {imageCount > 1 ? `${imageCount} images` : "image"}...
           </span>
         ) : (
           <span className="flex items-center gap-2">
@@ -89,11 +93,10 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
             >
               <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z" />
             </svg>
-            Generate Image
+            Generate {imageCount > 1 ? `${imageCount} Images` : "Image"}
           </span>
         )}
       </Button>
     </form>
   );
 }
-

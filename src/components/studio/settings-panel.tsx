@@ -4,12 +4,16 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 
 interface SettingsPanelProps {
-  steps: number;
-  onStepsChange: (steps: number) => void;
+  imageCount: number;
+  onImageCountChange: (count: number) => void;
   disabled?: boolean;
 }
 
-export function SettingsPanel({ steps, onStepsChange, disabled }: SettingsPanelProps) {
+export function SettingsPanel({ 
+  imageCount, 
+  onImageCountChange, 
+  disabled 
+}: SettingsPanelProps) {
   return (
     <div className="space-y-4 p-4 rounded-xl glass">
       <div className="flex items-center justify-between">
@@ -26,34 +30,35 @@ export function SettingsPanel({ steps, onStepsChange, disabled }: SettingsPanelP
             strokeLinejoin="round"
             className="text-primary"
           >
-            <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
-            <circle cx="12" cy="12" r="3" />
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+            <circle cx="9" cy="9" r="2" />
+            <path d="m21 15-3.086-3.086a2 2 0 00-2.828 0L6 21" />
           </svg>
-          Inference Steps
+          Number of Images
         </Label>
-        <span className="text-sm font-mono text-primary font-bold">{steps}</span>
+        <span className="text-sm font-mono text-primary font-bold">{imageCount}</span>
       </div>
       
       <Slider
-        value={[steps]}
-        onValueChange={([value]) => onStepsChange(value)}
+        value={[imageCount]}
+        onValueChange={([value]) => onImageCountChange(value)}
         min={1}
-        max={20}
+        max={4}
         step={1}
         disabled={disabled}
         className="[&_[role=slider]]:bg-primary [&_[role=slider]]:border-primary [&_[role=slider]]:shadow-lg [&_[role=slider]]:shadow-primary/30"
       />
       
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>Fast (1)</span>
-        <span>Balanced (5)</span>
-        <span>Quality (20)</span>
+        <span>1</span>
+        <span>2</span>
+        <span>3</span>
+        <span>4</span>
       </div>
       
       <p className="text-xs text-muted-foreground/70 leading-relaxed">
-        More steps = higher quality but slower generation. For FLUX.2 Turbo, 4-8 steps usually provide optimal results.
+        Generate up to 4 high-quality images at once with GPT Image 1.
       </p>
     </div>
   );
 }
-

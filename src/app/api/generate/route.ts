@@ -1,83 +1,40 @@
-import { InferenceClient } from "@huggingface/inference";
-import { NextRequest, NextResponse } from "next/server";
+import { generateImage } from "ai";
 
-const client = new InferenceClient(process.env.HF_TOKEN);
-
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { prompt, steps = 5 } = body;
+    const body = await req.json();
+    const { prompt, count = 1 } = body;
 
     if (!prompt || typeof prompt !== "string") {
-      return NextResponse.json(
-        { error: "Prompt is required and must be a string" },
-        { status: 400 }
-      );
+      return Response.json({ error: "Prompt is required" }, { status: 400 });
     }
 
-    if (!process.env.HF_TOKEN) {
-      return NextResponse.json(
-        { error: "HuggingFace API token is not configured" },
-        { status: 500 }
-      );
-    }
+    const imageCount = Math.min(Math.max(Number(count) || 1, 1), 4);
 
-    // Clamp steps between 1 and 20
-    const numSteps = Math.min(Math.max(Number(steps) || 5, 1), 20);
-
-    // Generate image using black-forest-labs FLUX model via HF Inference
-    const image = await client.textToImage({
-      model: "black-forest-labs/FLUX.1-schnell",
-      inputs: prompt,
-      parameters: { num_inference_steps: numSteps },
+    const result = await generateImage({
+      model: "google/gemini-3-pro-image",
+      prompt,
+      n: imageCount,
+      size: "1024x1024",
     });
 
-    // Convert response to base64 - handle both Blob and string responses
-    // Cast to unknown first since library types may not match runtime behavior
-    const imageResult = image as unknown;
-    let base64: string;
-    let mimeType = "image/png";
+    const imageUrls = result.images.map((img) => 
+      `data:image/png;base64,${img.base64}`
+    );
 
-    if (imageResult instanceof Blob) {
-      const arrayBuffer = await imageResult.arrayBuffer();
-      base64 = Buffer.from(arrayBuffer).toString("base64");
-      mimeType = imageResult.type || "image/png";
-    } else if (typeof imageResult === "string") {
-      // If it's already a data URL, return directly
-      if (imageResult.startsWith("data:")) {
-        return NextResponse.json({
-          success: true,
-          image: imageResult,
-          prompt,
-          steps: numSteps,
-        });
-      }
-      // Assume it's raw base64
-      base64 = imageResult;
-    } else {
-      throw new Error("Unexpected image response type");
-    }
-
-    return NextResponse.json({
+    return Response.json({
       success: true,
-      image: `data:${mimeType};base64,${base64}`,
+      images: imageUrls,
       prompt,
-      steps: numSteps,
+      count: imageCount,
     });
   } catch (error) {
     console.error("Image generation error:", error);
-    
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    
-    return NextResponse.json(
-      { 
-        error: "Failed to generate image", 
-        details: errorMessage 
-      },
+    return Response.json(
+      { error: "Failed to generate image", details: String(error) },
       { status: 500 }
     );
   }
 }
 
-export const runtime = "nodejs";
-export const maxDuration = 60;
+export const runtime = "edge";
