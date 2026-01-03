@@ -97,7 +97,7 @@ export function ImageDisplay({ images, prompt, isLoading, error }: ImageDisplayP
         </div>
         <div className="text-center space-y-2">
           <h3 className="text-lg font-semibold gradient-text">Creating your images...</h3>
-          <p className="text-sm text-muted-foreground">Powered by Gemini Imagen 3</p>
+          <p className="text-sm text-muted-foreground">Powered by FLUX AI ⚡</p>
         </div>
         <div className="w-full max-w-xs h-2 rounded-full bg-muted overflow-hidden">
           <div className="h-full shimmer rounded-full" />
@@ -106,32 +106,68 @@ export function ImageDisplay({ images, prompt, isLoading, error }: ImageDisplayP
     );
   }
 
-  // Error state
+  // Error state - improved with better styling and details
   if (error) {
+    // Parse error for better display
+    const isApiKeyError = error.toLowerCase().includes('api key') || error.toLowerCase().includes('apikey');
+    const isNetworkError = error.toLowerCase().includes('network') || error.toLowerCase().includes('fetch');
+    const isRateLimitError = error.toLowerCase().includes('rate') || error.toLowerCase().includes('limit') || error.toLowerCase().includes('429');
+    
+    let errorTitle = "Generation Failed";
+    let errorIcon = "⚠️";
+    let suggestion = "";
+    
+    if (isApiKeyError) {
+      errorTitle = "API Key Required";
+      errorIcon = "🔑";
+      suggestion = "Add OPENAI_API_KEY to .env.local for this feature.";
+    } else if (isNetworkError) {
+      errorTitle = "Connection Error";
+      errorIcon = "🌐";
+      suggestion = "Check your internet connection and try again.";
+    } else if (isRateLimitError) {
+      errorTitle = "Rate Limited";
+      errorIcon = "⏳";
+      suggestion = "Too many requests. Please wait a moment and try again.";
+    }
+    
     return (
-      <div className="aspect-square w-full rounded-2xl glass flex flex-col items-center justify-center gap-4 p-8 border-destructive/30">
-        <div className="w-20 h-20 rounded-full bg-destructive/20 flex items-center justify-center">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="40"
-            height="40"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-destructive"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" x2="12" y1="8" y2="12" />
-            <line x1="12" x2="12.01" y1="16" y2="16" />
-          </svg>
+      <div className="w-full rounded-2xl glass border border-red-500/30 bg-red-500/5 p-6 space-y-4">
+        {/* Error Header */}
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center text-2xl">
+            {errorIcon}
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-red-400">{errorTitle}</h3>
+            <p className="text-xs text-muted-foreground">Image generation encountered an error</p>
+          </div>
         </div>
-        <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold text-destructive">Generation failed</h3>
-          <p className="text-sm text-muted-foreground max-w-xs">{error}</p>
+        
+        {/* Error Message Box */}
+        <div className="rounded-lg bg-black/30 border border-red-500/20 p-4 font-mono text-sm">
+          <div className="flex items-start gap-2">
+            <span className="text-red-400 select-none">❯</span>
+            <p className="text-red-300/90 break-all">{error}</p>
+          </div>
         </div>
+        
+        {/* Suggestion */}
+        {suggestion && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 16v-4"/>
+              <path d="M12 8h.01"/>
+            </svg>
+            <span>{suggestion}</span>
+          </div>
+        )}
+        
+        {/* Retry hint */}
+        <p className="text-xs text-muted-foreground/70 text-center pt-2">
+          Try a different model or modify your prompt
+        </p>
       </div>
     );
   }
