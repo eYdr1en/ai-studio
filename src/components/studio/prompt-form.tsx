@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SettingsPanel } from "./settings-panel";
 
-// Available AI models for image generation - Pollinations.ai = FREE!
+// Available AI models for image generation
 const AI_MODELS = [
+  { id: "gpt-image-1", name: "GPT Image 1", description: "BEST quality via OpenRouter", badge: "🏆 Best" },
   { id: "flux", name: "FLUX", description: "Fast high-quality (FREE)", badge: "⚡ FREE" },
   { id: "flux-realism", name: "FLUX Realism", description: "Photorealistic (FREE)", badge: "📷 FREE" },
   { id: "flux-anime", name: "FLUX Anime", description: "Anime style (FREE)", badge: "🎭 FREE" },
   { id: "flux-3d", name: "FLUX 3D", description: "3D render style (FREE)", badge: "🎮 FREE" },
   { id: "turbo", name: "Turbo", description: "Super fast (FREE)", badge: "🚀 FREE" },
-  { id: "gpt-image-1.5", name: "GPT Image 1.5", description: "Best + editing (needs API key)", badge: "🏆 Best" },
+  { id: "gpt-image-direct", name: "GPT Image (Direct)", description: "Direct OpenAI (needs verification)", badge: "🔑" },
 ];
 
 interface PromptFormProps {
