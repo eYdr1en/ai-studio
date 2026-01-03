@@ -33,10 +33,28 @@ export async function POST(request: NextRequest) {
       parameters: { num_inference_steps: numSteps },
     });
 
-    // The image is a Blob - convert to base64
-    const arrayBuffer = await image.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString("base64");
-    const mimeType = image.type || "image/png";
+    // Convert response to base64 - handle both Blob and string responses
+    let base64: string;
+    let mimeType = "image/png";
+
+    if (image instanceof Blob) {
+      const arrayBuffer = await image.arrayBuffer();
+      base64 = Buffer.from(arrayBuffer).toString("base64");
+      mimeType = image.type || "image/png";
+    } else {
+      // If it's already a string (URL or base64), handle accordingly
+      if (typeof image === "string" && image.startsWith("data:")) {
+        // Already a data URL
+        return NextResponse.json({
+          success: true,
+          image,
+          prompt,
+          steps: numSteps,
+        });
+      }
+      // Assume it's raw base64 or needs conversion
+      base64 = String(image);
+    }
 
     return NextResponse.json({
       success: true,
