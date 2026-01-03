@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Studio | FLUX.2 Image Generator",
-  description: "Create stunning AI-generated images with FLUX.2 by fal-ai",
+  title: "AI Studio | SDXL Image Generator",
+  description: "Create stunning AI-generated images with Stable Diffusion XL",
   icons: {
     icon: "/favicon.ico",
   },

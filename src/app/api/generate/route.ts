@@ -23,16 +23,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Clamp steps between 1 and 20
-    const numSteps = Math.min(Math.max(Number(steps) || 5, 1), 20);
+    // Clamp steps between 1 and 50
+    const numSteps = Math.min(Math.max(Number(steps) || 25, 1), 50);
 
-    // Generate image using FLUX.2-dev-Turbo via fal-ai provider
-    // The response type varies - can be Blob, URL string, or data URL
+    // Generate image using free Stable Diffusion XL model
+    // This runs on HuggingFace's free inference API
     const imageResult = await client.textToImage({
-      provider: "fal-ai",
-      model: "fal/FLUX.2-dev-Turbo",
+      model: "stabilityai/stable-diffusion-xl-base-1.0",
       inputs: prompt,
-      parameters: { num_inference_steps: numSteps },
+      parameters: { 
+        num_inference_steps: numSteps,
+      },
     });
 
     let base64: string;
