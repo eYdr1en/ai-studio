@@ -25,10 +25,9 @@ export async function POST(request: NextRequest) {
     // Clamp steps between 1 and 20
     const numSteps = Math.min(Math.max(Number(steps) || 5, 1), 20);
 
-    // Generate image using FLUX.2-dev-Turbo with auto provider
+    // Generate image using black-forest-labs FLUX model via HF Inference
     const image = await client.textToImage({
-      provider: "auto",
-      model: "fal/FLUX.2-dev-Turbo",
+      model: "black-forest-labs/FLUX.1-schnell",
       inputs: prompt,
       parameters: { num_inference_steps: numSteps },
     });
