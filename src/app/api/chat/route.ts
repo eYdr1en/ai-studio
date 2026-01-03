@@ -1,5 +1,5 @@
 import { streamText, convertToModelMessages } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const modelMessages = await convertToModelMessages(messages);
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: google("gemini-2.0-flash"),
     system: "You are a helpful, creative AI assistant.",
     messages: modelMessages,
   });

@@ -1,5 +1,5 @@
 import { generateImage } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 
 export async function POST(req: Request) {
   try {
@@ -10,14 +10,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "Prompt is required" }, { status: 400 });
     }
 
-    // DALL-E 3 only supports n=1, DALL-E 2 supports up to 10
     const imageCount = Math.min(Math.max(Number(count) || 1, 1), 4);
 
     const result = await generateImage({
-      model: openai.image("dall-e-3"),
+      model: google.image("imagen-4.0-generate-001"),
       prompt,
       n: imageCount,
-      size: "1024x1024",
     });
 
     const imageUrls = result.images.map((img) => 
