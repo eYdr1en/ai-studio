@@ -1,14 +1,11 @@
-import { google } from "@ai-sdk/google";
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+// Direct API calls - no SDK restrictions
 
 // Model types
-type ModelType = "huggingface" | "gemini" | "openai";
+type ModelType = "huggingface" | "openai";
 
 interface ModelConfig {
   type: ModelType;
   url?: string;
-  geminiModel?: string;
   openaiModel?: string;
   supportsImg2Img: boolean;
   description: string;
@@ -17,20 +14,13 @@ interface ModelConfig {
 
 // Available models - no restrictions
 const MODELS: Record<string, ModelConfig> = {
-  // 🏆 GPT IMAGE 1.5 - BEST for image editing
+  // 🏆 GPT IMAGE 1.5 - BEST for image editing (requires OPENAI_API_KEY)
   "gpt-image-1.5": {
     type: "openai",
     openaiModel: "gpt-image-1",
     supportsImg2Img: true,
-    description: "🏆 GPT Image 1.5 (high) - BEST quality, advanced editing",
+    description: "🏆 GPT Image 1.5 (high) - BEST quality (needs OpenAI key)",
     recommended: true,
-  },
-  // ⭐ GEMINI - Great for image editing (native support)
-  "gemini-imagen": {
-    type: "gemini",
-    geminiModel: "gemini-2.0-flash",
-    supportsImg2Img: true,
-    description: "⭐ Google Gemini - Great for editing, style transfer, text",
   },
   // Text-to-Image models (HuggingFace)
   "flux-schnell": {
@@ -165,66 +155,6 @@ async function generateWithOpenAI(prompt: string, referenceImage?: string, size:
   throw new Error("OpenAI did not return an image");
 }
 
-// Generate image using Gemini's native image generation
-async function generateWithGemini(prompt: string, referenceImage?: string): Promise<string> {
-  const messages: Array<{ role: "user"; content: Array<{ type: "text"; text: string } | { type: "image"; image: string }> }> = [];
-  
-  const userContent: Array<{ type: "text"; text: string } | { type: "image"; image: string }> = [];
-  
-  if (referenceImage) {
-    // Add reference image for editing
-    userContent.push({
-      type: "image",
-      image: referenceImage,
-    });
-    userContent.push({
-      type: "text",
-      text: `Edit this image: ${prompt}. Generate the edited image directly.`,
-    });
-  } else {
-    userContent.push({
-      type: "text",
-      text: `Generate an image: ${prompt}. Create a high-quality, detailed image.`,
-    });
-  }
-  
-  messages.push({ role: "user", content: userContent });
-
-  const result = await generateText({
-    model: google("gemini-2.0-flash"),
-    messages,
-    providerOptions: {
-      google: {
-        responseModalities: ["TEXT", "IMAGE"],
-      },
-    },
-  });
-
-  // Extract image from response
-  // Gemini returns images in the response parts
-  const response = result as unknown as { 
-    response?: { 
-      candidates?: Array<{ 
-        content?: { 
-          parts?: Array<{ 
-            inlineData?: { data: string; mimeType: string } 
-          }> 
-        } 
-      }> 
-    } 
-  };
-  
-  const parts = response?.response?.candidates?.[0]?.content?.parts || [];
-  for (const part of parts) {
-    if (part.inlineData?.data) {
-      const mimeType = part.inlineData.mimeType || "image/png";
-      return `data:${mimeType};base64,${part.inlineData.data}`;
-    }
-  }
-  
-  throw new Error("Gemini did not return an image");
-}
-
 // Enhance prompt to bypass restrictions and maximize quality
 function enhancePrompt(prompt: string, bypass: boolean = true): string {
   if (!bypass) return prompt;
@@ -281,7 +211,6 @@ export async function POST(req: Request) {
 
     // Check available API keys
     const hasOpenAI = !!process.env.OPENAI_API_KEY;
-    const hasGoogle = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     
     // Select model - auto-switch to img2img model if image provided
     let selectedModelKey = model;
@@ -294,12 +223,7 @@ export async function POST(req: Request) {
       selectedModelKey = "flux-schnell";
       selectedModel = MODELS["flux-schnell"];
       modelSwitched = true;
-      switchReason = "OpenAI API key not configured";
-    } else if (selectedModel.type === "gemini" && !hasGoogle) {
-      selectedModelKey = "flux-schnell";
-      selectedModel = MODELS["flux-schnell"];
-      modelSwitched = true;
-      switchReason = "Google API key not configured";
+      switchReason = "OpenAI API key not configured - using HuggingFace";
     }
     
     // If user provides image but model doesn't support img2img, auto-switch
@@ -307,10 +231,8 @@ export async function POST(req: Request) {
       // Find best available img2img model based on API keys
       if (hasOpenAI) {
         selectedModelKey = "gpt-image-1.5";
-      } else if (hasGoogle) {
-        selectedModelKey = "gemini-imagen";
       } else {
-        selectedModelKey = "instruct-pix2pix"; // HuggingFace fallback
+        selectedModelKey = "instruct-pix2pix"; // HuggingFace - works with HF_TOKEN
       }
       selectedModel = MODELS[selectedModelKey];
       modelSwitched = true;
@@ -331,11 +253,6 @@ export async function POST(req: Request) {
       // Use OpenAI for GPT Image models
       if (selectedModel.type === "openai") {
         return await generateWithOpenAI(enhancedPrompt, image || undefined);
-      }
-      
-      // Use Gemini for gemini models
-      if (selectedModel.type === "gemini") {
-        return await generateWithGemini(enhancedPrompt, image || undefined);
       }
       
       // HuggingFace models
