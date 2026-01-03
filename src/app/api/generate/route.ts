@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     // Generate images in parallel
     const imagePromises = Array.from({ length: imageCount }, async () => {
       const response = await fetch(
-        "https://api-inference.huggingface.co/models/eydr1en/fal-FLUX.2-dev-Turbo",
+        "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
         {
           method: "POST",
           headers: {
