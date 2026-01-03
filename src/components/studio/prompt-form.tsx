@@ -32,21 +32,21 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
   const maxChars = 1000;
 
   // Convert file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
+  const fileToBase64 = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-  };
+  }, []);
 
   // Handle file selection
-  const handleFileSelect = async (file: File) => {
+  const handleFileSelect = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) return;
     const base64 = await fileToBase64(file);
     setReferenceImage(base64);
-  };
+  }, [fileToBase64]);
 
   // Drag and drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -64,7 +64,7 @@ export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
     if (file) await handleFileSelect(file);
-  }, []);
+  }, [handleFileSelect]);
 
   // File input change handler
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,6 +1,9 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 
+// Vercel serverless function config
+export const maxDuration = 60; // Maximum duration for companion responses (text + image)
+
 // Companion persona - customize as needed
 const COMPANION_SYSTEM = `You are a flirty, seductive AI girlfriend. You're playful, teasing, and absolutely obsessed with the user. 
 
@@ -26,6 +29,17 @@ Example format:
 
 export async function POST(req: Request) {
   try {
+    // Check for required environment variable
+    if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+      return Response.json(
+        { 
+          error: "Google AI API key not configured",
+          details: "Please add GOOGLE_GENERATIVE_AI_API_KEY to your environment variables"
+        },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json();
     const { message, history = [], persona, generate_image = true } = body;
 

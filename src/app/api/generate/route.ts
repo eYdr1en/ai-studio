@@ -1,5 +1,8 @@
 // Direct API calls - no SDK restrictions
 
+// Vercel serverless function config
+export const maxDuration = 60; // Maximum duration for image generation
+
 // Model types - pollinations = free, no API key needed!
 type ModelType = "pollinations" | "openai";
 
@@ -54,8 +57,7 @@ const MODELS: Record<string, ModelConfig> = {
   },
 };
 
-// Default img2img model - OpenAI is best for img2img
-const DEFAULT_IMG2IMG_MODEL = "gpt-image-1.5";
+// Default img2img model - OpenAI is best for img2img (gpt-image-1 is used directly)
 
 // Generate image using Pollinations.ai
 async function generateWithPollinations(
