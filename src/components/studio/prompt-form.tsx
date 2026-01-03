@@ -13,7 +13,7 @@ interface PromptFormProps {
 
 export function PromptForm({ onGenerate, isLoading }: PromptFormProps) {
   const [prompt, setPrompt] = useState("");
-  const [steps, setSteps] = useState(25);
+  const [steps, setSteps] = useState(5);
   const maxChars = 1000;
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -68,12 +68,12 @@ export default function Home() {
             </div>
             <div>
               <h1 className="text-xl font-bold gradient-text">AI Studio</h1>
-              <p className="text-xs text-muted-foreground">Powered by SDXL</p>
+              <p className="text-xs text-muted-foreground">Powered by FLUX.2</p>
             </div>
           </div>
           
           <a
-            href="https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0"
+            href="https://huggingface.co/fal/FLUX.2-dev-Turbo"
             target="_blank"
             rel="noopener noreferrer"
             className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
@@ -109,8 +109,8 @@ export default function Home() {
               <span className="text-foreground">AI Images</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Transform your ideas into beautiful images using Stable Diffusion XL.
-              Free, high-quality generation at your fingertips.
+              Transform your ideas into beautiful images using FLUX.2 Turbo.
+              Fast, high-quality generation at your fingertips.
             </p>
           </div>
 
@@ -122,7 +122,7 @@ export default function Home() {
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                   <span className="text-sm font-medium text-muted-foreground">
-                    Stable Diffusion XL
+                    FLUX.2-dev-Turbo
                   </span>
                 </div>
                 <PromptForm onGenerate={handleGenerate} isLoading={isLoading} />
@@ -160,7 +160,7 @@ export default function Home() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">•</span>
-                    Use 20-30 inference steps for optimal speed/quality balance
+                    Use 4-8 inference steps for optimal speed/quality balance
                   </li>
                 </ul>
               </div>

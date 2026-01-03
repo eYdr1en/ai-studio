@@ -38,20 +38,20 @@ export function SettingsPanel({ steps, onStepsChange, disabled }: SettingsPanelP
         value={[steps]}
         onValueChange={([value]) => onStepsChange(value)}
         min={1}
-        max={50}
+        max={20}
         step={1}
         disabled={disabled}
         className="[&_[role=slider]]:bg-primary [&_[role=slider]]:border-primary [&_[role=slider]]:shadow-lg [&_[role=slider]]:shadow-primary/30"
       />
       
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>Fast (10)</span>
-        <span>Balanced (25)</span>
-        <span>Quality (50)</span>
+        <span>Fast (1)</span>
+        <span>Balanced (5)</span>
+        <span>Quality (20)</span>
       </div>
       
       <p className="text-xs text-muted-foreground/70 leading-relaxed">
-        More steps = higher quality but slower generation. For SDXL, 20-30 steps usually provide optimal results.
+        More steps = higher quality but slower generation. For FLUX.2 Turbo, 4-8 steps usually provide optimal results.
       </p>
     </div>
   );

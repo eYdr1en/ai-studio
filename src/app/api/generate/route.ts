@@ -1,7 +1,6 @@
 import { InferenceClient } from "@huggingface/inference";
 import { NextRequest, NextResponse } from "next/server";
 
-// Initialize the HuggingFace Inference Client
 const client = new InferenceClient(process.env.HF_TOKEN);
 
 export async function POST(request: NextRequest) {
@@ -23,55 +22,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Clamp steps between 1 and 50
-    const numSteps = Math.min(Math.max(Number(steps) || 25, 1), 50);
+    // Clamp steps between 1 and 20
+    const numSteps = Math.min(Math.max(Number(steps) || 5, 1), 20);
 
-    // Generate image using free Stable Diffusion XL model
-    // This runs on HuggingFace's free inference API
-    const imageResult = await client.textToImage({
-      model: "stabilityai/stable-diffusion-xl-base-1.0",
+    // Generate image using FLUX.2-dev-Turbo with auto provider
+    const image = await client.textToImage({
+      provider: "auto",
+      model: "fal/FLUX.2-dev-Turbo",
       inputs: prompt,
-      parameters: { 
-        num_inference_steps: numSteps,
-      },
+      parameters: { num_inference_steps: numSteps },
     });
 
-    let base64: string;
-    let mimeType: string = "image/png";
-
-    // Type assertion needed as the actual runtime type can be Blob
-    const image = imageResult as unknown;
-
-    if (image && typeof image === "object" && "arrayBuffer" in image) {
-      // It's a Blob-like object
-      const blob = image as Blob;
-      const arrayBuffer = await blob.arrayBuffer();
-      base64 = Buffer.from(arrayBuffer).toString("base64");
-      mimeType = blob.type || "image/png";
-    } else if (typeof image === "string") {
-      // Handle string responses
-      if (image.startsWith("data:")) {
-        // Already a data URL
-        return NextResponse.json({
-          success: true,
-          image: image,
-          prompt,
-          steps: numSteps,
-        });
-      } else if (image.startsWith("http")) {
-        // It's a URL - fetch and convert to base64
-        const response = await fetch(image);
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        base64 = Buffer.from(arrayBuffer).toString("base64");
-        mimeType = blob.type || "image/png";
-      } else {
-        // Assume it's raw base64
-        base64 = image;
-      }
-    } else {
-      throw new Error("Unexpected response format from image generation");
-    }
+    // The image is a Blob - convert to base64
+    const arrayBuffer = await image.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    const mimeType = image.type || "image/png";
 
     return NextResponse.json({
       success: true,
@@ -95,4 +60,4 @@ export async function POST(request: NextRequest) {
 }
 
 export const runtime = "nodejs";
-export const maxDuration = 60; // Allow up to 60 seconds for image generation
+export const maxDuration = 60;
