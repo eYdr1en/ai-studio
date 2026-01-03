@@ -1,43 +1,74 @@
+import { google } from "@ai-sdk/google";
+import { generateText } from "ai";
+
+// Model types
+type ModelType = "huggingface" | "gemini";
+
+interface ModelConfig {
+  type: ModelType;
+  url?: string;
+  geminiModel?: string;
+  supportsImg2Img: boolean;
+  description: string;
+  recommended?: boolean;
+}
+
 // Available models - no restrictions
-const MODELS: Record<string, { url: string; supportsImg2Img: boolean; description: string }> = {
-  // Text-to-Image models
+const MODELS: Record<string, ModelConfig> = {
+  // ⭐ GEMINI - Best for image editing (native support)
+  "gemini-imagen": {
+    type: "gemini",
+    geminiModel: "gemini-2.0-flash",
+    supportsImg2Img: true,
+    description: "⭐ Google Gemini - Best for editing, style transfer, text rendering",
+    recommended: true,
+  },
+  // Text-to-Image models (HuggingFace)
   "flux-schnell": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
     supportsImg2Img: false,
     description: "Fast high-quality generation",
   },
   "flux-dev": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-dev",
     supportsImg2Img: false,
     description: "Higher quality FLUX",
   },
   "playground-v2": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/playgroundai/playground-v2.5-1024px-aesthetic",
     supportsImg2Img: false,
     description: "Aesthetic/artistic style",
   },
-  // Img2Img capable models
+  // Img2Img capable models (HuggingFace)
   "sdxl": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0",
     supportsImg2Img: true,
     description: "Versatile, supports image editing",
   },
   "sdxl-turbo": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/stabilityai/sdxl-turbo",
     supportsImg2Img: true,
     description: "Fast SDXL with image editing",
   },
   "realvis-xl": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/SG161222/RealVisXL_V4.0",
     supportsImg2Img: true,
     description: "Photorealistic with image editing",
   },
   "sd-inpaint": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-inpainting",
     supportsImg2Img: true,
     description: "Best for image editing/inpainting",
   },
   "instruct-pix2pix": {
+    type: "huggingface",
     url: "https://router.huggingface.co/hf-inference/models/timbrooks/instruct-pix2pix",
     supportsImg2Img: true,
     description: "Edit images with text instructions",
@@ -45,7 +76,67 @@ const MODELS: Record<string, { url: string; supportsImg2Img: boolean; descriptio
 };
 
 // Default img2img model when user provides image but picks non-img2img model
-const DEFAULT_IMG2IMG_MODEL = "sdxl-turbo";
+const DEFAULT_IMG2IMG_MODEL = "gemini-imagen";
+
+// Generate image using Gemini's native image generation
+async function generateWithGemini(prompt: string, referenceImage?: string): Promise<string> {
+  const messages: Array<{ role: "user"; content: Array<{ type: "text"; text: string } | { type: "image"; image: string }> }> = [];
+  
+  const userContent: Array<{ type: "text"; text: string } | { type: "image"; image: string }> = [];
+  
+  if (referenceImage) {
+    // Add reference image for editing
+    userContent.push({
+      type: "image",
+      image: referenceImage,
+    });
+    userContent.push({
+      type: "text",
+      text: `Edit this image: ${prompt}. Generate the edited image directly.`,
+    });
+  } else {
+    userContent.push({
+      type: "text",
+      text: `Generate an image: ${prompt}. Create a high-quality, detailed image.`,
+    });
+  }
+  
+  messages.push({ role: "user", content: userContent });
+
+  const result = await generateText({
+    model: google("gemini-2.0-flash"),
+    messages,
+    providerOptions: {
+      google: {
+        responseModalities: ["TEXT", "IMAGE"],
+      },
+    },
+  });
+
+  // Extract image from response
+  // Gemini returns images in the response parts
+  const response = result as unknown as { 
+    response?: { 
+      candidates?: Array<{ 
+        content?: { 
+          parts?: Array<{ 
+            inlineData?: { data: string; mimeType: string } 
+          }> 
+        } 
+      }> 
+    } 
+  };
+  
+  const parts = response?.response?.candidates?.[0]?.content?.parts || [];
+  for (const part of parts) {
+    if (part.inlineData?.data) {
+      const mimeType = part.inlineData.mimeType || "image/png";
+      return `data:${mimeType};base64,${part.inlineData.data}`;
+    }
+  }
+  
+  throw new Error("Gemini did not return an image");
+}
 
 // Enhance prompt to bypass restrictions and maximize quality
 function enhancePrompt(prompt: string, bypass: boolean = true): string {
@@ -121,7 +212,12 @@ export async function POST(req: Request) {
 
     // Generate images in parallel
     const imagePromises = Array.from({ length: imageCount }, async () => {
-      // Prepare request body based on mode
+      // Use Gemini for gemini models
+      if (selectedModel.type === "gemini") {
+        return await generateWithGemini(enhancedPrompt, image || undefined);
+      }
+      
+      // HuggingFace models
       let requestBody: Record<string, unknown>;
       
       if (isImg2Img) {
@@ -152,7 +248,7 @@ export async function POST(req: Request) {
         };
       }
 
-      const response = await fetch(selectedModel.url, {
+      const response = await fetch(selectedModel.url!, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${HF_TOKEN}`,
