@@ -1,13 +1,15 @@
 import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 
 // Model types
-type ModelType = "huggingface" | "gemini";
+type ModelType = "huggingface" | "gemini" | "openai";
 
 interface ModelConfig {
   type: ModelType;
   url?: string;
   geminiModel?: string;
+  openaiModel?: string;
   supportsImg2Img: boolean;
   description: string;
   recommended?: boolean;
@@ -15,13 +17,20 @@ interface ModelConfig {
 
 // Available models - no restrictions
 const MODELS: Record<string, ModelConfig> = {
-  // ⭐ GEMINI - Best for image editing (native support)
+  // 🏆 GPT IMAGE 1.5 - BEST for image editing
+  "gpt-image-1.5": {
+    type: "openai",
+    openaiModel: "gpt-image-1",
+    supportsImg2Img: true,
+    description: "🏆 GPT Image 1.5 (high) - BEST quality, advanced editing",
+    recommended: true,
+  },
+  // ⭐ GEMINI - Great for image editing (native support)
   "gemini-imagen": {
     type: "gemini",
     geminiModel: "gemini-2.0-flash",
     supportsImg2Img: true,
-    description: "⭐ Google Gemini - Best for editing, style transfer, text rendering",
-    recommended: true,
+    description: "⭐ Google Gemini - Great for editing, style transfer, text",
   },
   // Text-to-Image models (HuggingFace)
   "flux-schnell": {
@@ -76,7 +85,60 @@ const MODELS: Record<string, ModelConfig> = {
 };
 
 // Default img2img model when user provides image but picks non-img2img model
-const DEFAULT_IMG2IMG_MODEL = "gemini-imagen";
+const DEFAULT_IMG2IMG_MODEL = "gpt-image-1.5";
+
+// Generate image using OpenAI's GPT Image model
+async function generateWithOpenAI(prompt: string, referenceImage?: string, size: string = "1024x1024"): Promise<string> {
+  const requestBody: Record<string, unknown> = {
+    model: "gpt-image-1",
+    prompt: referenceImage 
+      ? `Edit this image based on the following instructions: ${prompt}`
+      : prompt,
+    n: 1,
+    size: size,
+    quality: "high",
+  };
+
+  // Add image for editing if provided
+  if (referenceImage) {
+    // Extract base64 if it's a data URL
+    let imageData = referenceImage;
+    if (referenceImage.startsWith("data:")) {
+      imageData = referenceImage.split(",")[1];
+    }
+    requestBody.image = imageData;
+  }
+
+  const response = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`OpenAI API error: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+  
+  // Handle different response formats
+  if (data.data?.[0]?.b64_json) {
+    return `data:image/png;base64,${data.data[0].b64_json}`;
+  } else if (data.data?.[0]?.url) {
+    // Fetch the image and convert to base64
+    const imgResponse = await fetch(data.data[0].url);
+    const blob = await imgResponse.blob();
+    const buffer = await blob.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    return `data:image/png;base64,${base64}`;
+  }
+  
+  throw new Error("OpenAI did not return an image");
+}
 
 // Generate image using Gemini's native image generation
 async function generateWithGemini(prompt: string, referenceImage?: string): Promise<string> {
@@ -212,6 +274,11 @@ export async function POST(req: Request) {
 
     // Generate images in parallel
     const imagePromises = Array.from({ length: imageCount }, async () => {
+      // Use OpenAI for GPT Image models
+      if (selectedModel.type === "openai") {
+        return await generateWithOpenAI(enhancedPrompt, image || undefined);
+      }
+      
       // Use Gemini for gemini models
       if (selectedModel.type === "gemini") {
         return await generateWithGemini(enhancedPrompt, image || undefined);
