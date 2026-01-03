@@ -34,26 +34,29 @@ export async function POST(request: NextRequest) {
     });
 
     // Convert response to base64 - handle both Blob and string responses
+    // Cast to unknown first since library types may not match runtime behavior
+    const imageResult = image as unknown;
     let base64: string;
     let mimeType = "image/png";
 
-    if (image instanceof Blob) {
-      const arrayBuffer = await image.arrayBuffer();
+    if (imageResult instanceof Blob) {
+      const arrayBuffer = await imageResult.arrayBuffer();
       base64 = Buffer.from(arrayBuffer).toString("base64");
-      mimeType = image.type || "image/png";
-    } else {
-      // If it's already a string (URL or base64), handle accordingly
-      if (typeof image === "string" && image.startsWith("data:")) {
-        // Already a data URL
+      mimeType = imageResult.type || "image/png";
+    } else if (typeof imageResult === "string") {
+      // If it's already a data URL, return directly
+      if (imageResult.startsWith("data:")) {
         return NextResponse.json({
           success: true,
-          image,
+          image: imageResult,
           prompt,
           steps: numSteps,
         });
       }
-      // Assume it's raw base64 or needs conversion
-      base64 = String(image);
+      // Assume it's raw base64
+      base64 = imageResult;
+    } else {
+      throw new Error("Unexpected image response type");
     }
 
     return NextResponse.json({
