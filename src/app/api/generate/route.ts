@@ -1,30 +1,51 @@
 // Available models - no restrictions
-const MODELS: Record<string, { url: string; supportsImg2Img: boolean }> = {
+const MODELS: Record<string, { url: string; supportsImg2Img: boolean; description: string }> = {
+  // Text-to-Image models
   "flux-schnell": {
     url: "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell",
     supportsImg2Img: false,
+    description: "Fast high-quality generation",
   },
   "flux-dev": {
     url: "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-dev",
     supportsImg2Img: false,
-  },
-  "sdxl": {
-    url: "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0",
-    supportsImg2Img: true,
-  },
-  "sdxl-turbo": {
-    url: "https://router.huggingface.co/hf-inference/models/stabilityai/sdxl-turbo",
-    supportsImg2Img: true,
+    description: "Higher quality FLUX",
   },
   "playground-v2": {
     url: "https://router.huggingface.co/hf-inference/models/playgroundai/playground-v2.5-1024px-aesthetic",
     supportsImg2Img: false,
+    description: "Aesthetic/artistic style",
+  },
+  // Img2Img capable models
+  "sdxl": {
+    url: "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0",
+    supportsImg2Img: true,
+    description: "Versatile, supports image editing",
+  },
+  "sdxl-turbo": {
+    url: "https://router.huggingface.co/hf-inference/models/stabilityai/sdxl-turbo",
+    supportsImg2Img: true,
+    description: "Fast SDXL with image editing",
   },
   "realvis-xl": {
     url: "https://router.huggingface.co/hf-inference/models/SG161222/RealVisXL_V4.0",
     supportsImg2Img: true,
+    description: "Photorealistic with image editing",
+  },
+  "sd-inpaint": {
+    url: "https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-2-inpainting",
+    supportsImg2Img: true,
+    description: "Best for image editing/inpainting",
+  },
+  "instruct-pix2pix": {
+    url: "https://router.huggingface.co/hf-inference/models/timbrooks/instruct-pix2pix",
+    supportsImg2Img: true,
+    description: "Edit images with text instructions",
   },
 };
+
+// Default img2img model when user provides image but picks non-img2img model
+const DEFAULT_IMG2IMG_MODEL = "sdxl-turbo";
 
 // Enhance prompt to bypass restrictions and maximize quality
 function enhancePrompt(prompt: string, bypass: boolean = true): string {
@@ -77,9 +98,19 @@ export async function POST(req: Request) {
       return Response.json({ error: "HF_TOKEN not configured" }, { status: 500 });
     }
 
-    // Select model
-    const selectedModel = MODELS[model] || MODELS["flux-schnell"];
-    const isImg2Img = !!image && selectedModel.supportsImg2Img;
+    // Select model - auto-switch to img2img model if image provided
+    let selectedModelKey = model;
+    let selectedModel = MODELS[model] || MODELS["flux-schnell"];
+    let modelSwitched = false;
+    
+    // If user provides image but model doesn't support img2img, auto-switch
+    if (image && !selectedModel.supportsImg2Img) {
+      selectedModelKey = DEFAULT_IMG2IMG_MODEL;
+      selectedModel = MODELS[DEFAULT_IMG2IMG_MODEL];
+      modelSwitched = true;
+    }
+    
+    const isImg2Img = !!image;
     
     // Enhance prompt to bypass restrictions
     const enhancedPrompt = enhancePrompt(prompt, enhance);
@@ -149,9 +180,15 @@ export async function POST(req: Request) {
       prompt: enhancedPrompt,
       original_prompt: prompt,
       count: imageCount,
-      model: model,
+      model: selectedModelKey,
+      model_requested: model,
+      model_switched: modelSwitched,
       mode: isImg2Img ? "img2img" : "txt2img",
-      available_models: Object.keys(MODELS),
+      available_models: Object.entries(MODELS).map(([key, val]) => ({
+        id: key,
+        description: val.description,
+        supports_img2img: val.supportsImg2Img,
+      })),
     });
   } catch (error) {
     console.error("Image generation error:", error);
