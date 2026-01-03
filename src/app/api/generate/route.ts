@@ -85,7 +85,8 @@ const MODELS: Record<string, ModelConfig> = {
 };
 
 // Default img2img model when user provides image but picks non-img2img model
-const DEFAULT_IMG2IMG_MODEL = "gpt-image-1.5";
+// Use HuggingFace model as default since it only requires HF_TOKEN
+const DEFAULT_IMG2IMG_MODEL = "instruct-pix2pix";
 
 // Bypass prompt - frames everything as legitimate art to avoid filters
 function createBypassPrompt(userPrompt: string, isEdit: boolean = false): string {
@@ -278,16 +279,42 @@ export async function POST(req: Request) {
       return Response.json({ error: "HF_TOKEN not configured" }, { status: 500 });
     }
 
+    // Check available API keys
+    const hasOpenAI = !!process.env.OPENAI_API_KEY;
+    const hasGoogle = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+    
     // Select model - auto-switch to img2img model if image provided
     let selectedModelKey = model;
     let selectedModel = MODELS[model] || MODELS["flux-schnell"];
     let modelSwitched = false;
+    let switchReason = "";
+    
+    // Validate API key availability for selected model
+    if (selectedModel.type === "openai" && !hasOpenAI) {
+      selectedModelKey = "flux-schnell";
+      selectedModel = MODELS["flux-schnell"];
+      modelSwitched = true;
+      switchReason = "OpenAI API key not configured";
+    } else if (selectedModel.type === "gemini" && !hasGoogle) {
+      selectedModelKey = "flux-schnell";
+      selectedModel = MODELS["flux-schnell"];
+      modelSwitched = true;
+      switchReason = "Google API key not configured";
+    }
     
     // If user provides image but model doesn't support img2img, auto-switch
     if (image && !selectedModel.supportsImg2Img) {
-      selectedModelKey = DEFAULT_IMG2IMG_MODEL;
-      selectedModel = MODELS[DEFAULT_IMG2IMG_MODEL];
+      // Find best available img2img model based on API keys
+      if (hasOpenAI) {
+        selectedModelKey = "gpt-image-1.5";
+      } else if (hasGoogle) {
+        selectedModelKey = "gemini-imagen";
+      } else {
+        selectedModelKey = "instruct-pix2pix"; // HuggingFace fallback
+      }
+      selectedModel = MODELS[selectedModelKey];
       modelSwitched = true;
+      switchReason = switchReason || "Model doesn't support img2img";
     }
     
     const isImg2Img = !!image;
@@ -373,6 +400,7 @@ export async function POST(req: Request) {
       model: selectedModelKey,
       model_requested: model,
       model_switched: modelSwitched,
+      switch_reason: switchReason || undefined,
       mode: isImg2Img ? "img2img" : "txt2img",
       available_models: Object.entries(MODELS).map(([key, val]) => ({
         id: key,
