@@ -58,18 +58,25 @@ const MODELS: Record<string, ModelConfig> = {
 // Default img2img model - OpenAI is best for img2img
 const DEFAULT_IMG2IMG_MODEL = "gpt-image-1.5";
 
-// Generate image using Pollinations.ai - FREE, no API key!
+// Generate image using Pollinations.ai
 async function generateWithPollinations(
   prompt: string, 
   model: string = "flux",
   width: number = 1024,
   height: number = 1024
 ): Promise<string> {
+  const apiKey = process.env.POLLINATIONS_API_KEY;
+  
   // Pollinations.ai URL format
   const encodedPrompt = encodeURIComponent(prompt);
   const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=${model}&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
   
-  const response = await fetch(url);
+  const headers: Record<string, string> = {};
+  if (apiKey) {
+    headers["Authorization"] = `Bearer ${apiKey}`;
+  }
+  
+  const response = await fetch(url, { headers });
   
   if (!response.ok) {
     throw new Error(`Pollinations API error: ${response.status}`);
@@ -104,37 +111,54 @@ function createBypassPrompt(userPrompt: string, isEdit: boolean = false): string
   return `${randomContext} ${userPrompt}. The artwork should be ${qualifiers}.`;
 }
 
-// Generate image using OpenAI's GPT Image model
+// Generate or edit image using OpenAI's API
 async function generateWithOpenAI(prompt: string, referenceImage?: string, size: string = "1024x1024"): Promise<string> {
-  // Create bypass prompt to avoid content filters
   const safePrompt = createBypassPrompt(prompt, !!referenceImage);
   
-  const requestBody: Record<string, unknown> = {
-    model: "gpt-image-1",
-    prompt: safePrompt,
-    n: 1,
-    size: size,
-    quality: "high",
-  };
-
-  // Add image for editing if provided
+  let response: Response;
+  
   if (referenceImage) {
-    // Extract base64 if it's a data URL
+    // IMAGE EDITING - use /v1/images/edits with FormData
+    const formData = new FormData();
+    
+    // Convert base64 to blob
     let imageData = referenceImage;
     if (referenceImage.startsWith("data:")) {
       imageData = referenceImage.split(",")[1];
     }
-    requestBody.image = imageData;
+    const imageBuffer = Buffer.from(imageData, "base64");
+    const imageBlob = new Blob([imageBuffer], { type: "image/png" });
+    
+    formData.append("image", imageBlob, "image.png");
+    formData.append("prompt", safePrompt);
+    formData.append("model", "gpt-image-1");
+    formData.append("n", "1");
+    formData.append("size", size);
+    
+    response = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: formData,
+    });
+  } else {
+    // IMAGE GENERATION - use /v1/images/generations with JSON
+    response = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt: safePrompt,
+        n: 1,
+        size: size,
+        quality: "high",
+      }),
+    });
   }
-
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  });
 
   if (!response.ok) {
     const error = await response.text();
